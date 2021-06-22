@@ -462,7 +462,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_gl_color_convert_debug);
   GST_DEBUG_CATEGORY_INIT (gst_gl_color_convert_debug, "glconvert", 0, "convert");
 
 G_DEFINE_TYPE_WITH_CODE (GstGLColorConvert, gst_gl_color_convert,
-    GST_TYPE_OBJECT, DEBUG_INIT);
+    GST_TYPE_OBJECT, G_ADD_PRIVATE (GstGLColorConvert) DEBUG_INIT);
+
 static void gst_gl_color_convert_finalize (GObject * object);
 static void gst_gl_color_convert_reset (GstGLColorConvert * convert);
 
@@ -472,15 +473,13 @@ static void gst_gl_color_convert_reset (GstGLColorConvert * convert);
 static void
 gst_gl_color_convert_class_init (GstGLColorConvertClass * klass)
 {
-  g_type_class_add_private (klass, sizeof (GstGLColorConvertPrivate));
-
   G_OBJECT_CLASS (klass)->finalize = gst_gl_color_convert_finalize;
 }
 
 static void
 gst_gl_color_convert_init (GstGLColorConvert * convert)
 {
-  convert->priv = GST_GL_COLOR_CONVERT_GET_PRIVATE (convert);
+  convert->priv = gst_gl_color_convert_get_instance_private (convert);
 
   gst_gl_color_convert_reset (convert);
 }
@@ -2388,7 +2387,6 @@ _do_convert (GstGLContext * context, GstGLColorConvert * convert)
   struct ConvertInfo *c_info = &convert->priv->convert_info;
   gboolean res = TRUE;
   gint views, v;
-  GstVideoOverlayCompositionMeta *composition_meta;
   GstGLSyncMeta *sync_meta;
   GstFlowReturn ret;
 
@@ -2504,19 +2502,20 @@ _do_convert (GstGLContext * context, GstGLColorConvert * convert)
   }
 
   if (convert->outbuf) {
+    GstVideoOverlayCompositionMeta *composition_meta;
     GstGLSyncMeta *sync_meta =
         gst_buffer_add_gl_sync_meta (convert->context, convert->outbuf);
 
     if (sync_meta)
       gst_gl_sync_meta_set_sync_point (sync_meta, convert->context);
-  }
 
-  composition_meta =
-      gst_buffer_get_video_overlay_composition_meta (convert->inbuf);
-  if (composition_meta) {
-    GST_DEBUG ("found video overlay composition meta, applying on output.");
-    gst_buffer_add_video_overlay_composition_meta
-        (convert->outbuf, composition_meta->overlay);
+    composition_meta =
+        gst_buffer_get_video_overlay_composition_meta (convert->inbuf);
+    if (composition_meta) {
+      GST_DEBUG ("found video overlay composition meta, applying on output.");
+      gst_buffer_add_video_overlay_composition_meta
+          (convert->outbuf, composition_meta->overlay);
+    }
   }
 
   convert->priv->result = res;

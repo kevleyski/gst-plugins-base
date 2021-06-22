@@ -25,14 +25,14 @@
  *
  * Provides a base class for RTP depayloaders
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include "gstrtpbasedepayload.h"
 
 GST_DEBUG_CATEGORY_STATIC (rtpbasedepayload_debug);
 #define GST_CAT_DEFAULT (rtpbasedepayload_debug)
-
-#define GST_RTP_BASE_DEPAYLOAD_GET_PRIVATE(obj)  \
-   (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_RTP_BASE_DEPAYLOAD, GstRTPBaseDepayloadPrivate))
 
 struct _GstRTPBaseDepayloadPrivate
 {
@@ -56,6 +56,7 @@ struct _GstRTPBaseDepayloadPrivate
 
   GstCaps *last_caps;
   GstEvent *segment_event;
+  guint32 segment_seqnum;       /* Note: this is a GstEvent seqnum */
 };
 
 /* Filter signals and args */
@@ -94,6 +95,8 @@ static gboolean gst_rtp_base_depayload_handle_event (GstRTPBaseDepayload *
     filter, GstEvent * event);
 
 static GstElementClass *parent_class = NULL;
+static gint private_offset = 0;
+
 static void gst_rtp_base_depayload_class_init (GstRTPBaseDepayloadClass *
     klass);
 static void gst_rtp_base_depayload_init (GstRTPBaseDepayload * rtpbasepayload,
@@ -118,12 +121,24 @@ gst_rtp_base_depayload_get_type (void)
       0,
       (GInstanceInitFunc) gst_rtp_base_depayload_init,
     };
+    GType _type;
 
-    g_once_init_leave ((gsize *) & rtp_base_depayload_type,
-        g_type_register_static (GST_TYPE_ELEMENT, "GstRTPBaseDepayload",
-            &rtp_base_depayload_info, G_TYPE_FLAG_ABSTRACT));
+    _type = g_type_register_static (GST_TYPE_ELEMENT, "GstRTPBaseDepayload",
+        &rtp_base_depayload_info, G_TYPE_FLAG_ABSTRACT);
+
+    private_offset =
+        g_type_add_instance_private (_type,
+        sizeof (GstRTPBaseDepayloadPrivate));
+
+    g_once_init_leave ((gsize *) & rtp_base_depayload_type, _type);
   }
   return rtp_base_depayload_type;
+}
+
+static inline GstRTPBaseDepayloadPrivate *
+gst_rtp_base_depayload_get_instance_private (GstRTPBaseDepayload * self)
+{
+  return (G_STRUCT_MEMBER_P (self, private_offset));
 }
 
 static void
@@ -136,7 +151,8 @@ gst_rtp_base_depayload_class_init (GstRTPBaseDepayloadClass * klass)
   gstelement_class = (GstElementClass *) klass;
   parent_class = g_type_class_peek_parent (klass);
 
-  g_type_class_add_private (klass, sizeof (GstRTPBaseDepayloadPrivate));
+  if (private_offset != 0)
+    g_type_class_adjust_private_offset (klass, &private_offset);
 
   gobject_class->finalize = gst_rtp_base_depayload_finalize;
   gobject_class->set_property = gst_rtp_base_depayload_set_property;
@@ -183,7 +199,8 @@ gst_rtp_base_depayload_init (GstRTPBaseDepayload * filter,
   GstPadTemplate *pad_template;
   GstRTPBaseDepayloadPrivate *priv;
 
-  priv = GST_RTP_BASE_DEPAYLOAD_GET_PRIVATE (filter);
+  priv = gst_rtp_base_depayload_get_instance_private (filter);
+
   filter->priv = priv;
 
   GST_DEBUG_OBJECT (filter, "init");
@@ -583,6 +600,7 @@ gst_rtp_base_depayload_handle_event (GstRTPBaseDepayload * filter,
         GST_ERROR_OBJECT (filter, "Segment with non-TIME format not supported");
         res = FALSE;
       }
+      filter->priv->segment_seqnum = gst_event_get_seqnum (event);
       filter->segment = segment;
       GST_OBJECT_UNLOCK (filter);
 
@@ -703,6 +721,8 @@ create_segment_event (GstRTPBaseDepayload * filter, guint rtptime,
   GST_DEBUG_OBJECT (filter, "Creating segment event %" GST_SEGMENT_FORMAT,
       &segment);
   event = gst_event_new_segment (&segment);
+  if (filter->priv->segment_seqnum != GST_SEQNUM_INVALID)
+    gst_event_set_seqnum (event, filter->priv->segment_seqnum);
 
   return event;
 }
@@ -877,6 +897,7 @@ gst_rtp_base_depayload_change_state (GstElement * element,
       priv->next_seqnum = -1;
       priv->negotiated = FALSE;
       priv->discont = FALSE;
+      priv->segment_seqnum = GST_SEQNUM_INVALID;
       break;
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
       break;

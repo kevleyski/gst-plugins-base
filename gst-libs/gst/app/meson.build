@@ -9,10 +9,11 @@ install_headers(app_headers, subdir : 'gstreamer-1.0/gst/app/')
 
 app_enums = gnome.mkenums_simple('app-enumtypes',
   sources : app_mkenum_headers,
+  body_prefix : '#ifdef HAVE_CONFIG_H\n#include "config.h"\n#endif',
   header_prefix : '#include <gst/app/app-prelude.h>',
   decorator : 'GST_APP_API',
   install_header: true,
-  install_dir : 'include/gstreamer-1.0/gst/app/')
+  install_dir : join_paths(get_option('includedir'), 'gstreamer-1.0/gst/app'))
 gstapp_c = app_enums[0]
 gstapp_h = app_enums[1]
 
@@ -20,10 +21,11 @@ app_gen_sources = [gstapp_h]
 
 gstapp = library('gstapp-@0@'.format(api_version),
   app_sources, gstapp_h, gstapp_c,
-  c_args : gst_plugins_base_args,
+  c_args : gst_plugins_base_args + ['-DBUILDING_GST_APP'],
   include_directories: [configinc, libsinc],
   version : libversion,
   soversion : soversion,
+  darwin_versions : osxversion,
   install : true,
   dependencies : [gst_base_dep],
 )

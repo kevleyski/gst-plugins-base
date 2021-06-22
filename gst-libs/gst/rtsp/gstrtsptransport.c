@@ -48,6 +48,9 @@
  *
  * Provides helper functions to deal with RTSP transport strings.
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include <string.h>
 #include <stdlib.h>
@@ -198,7 +201,7 @@ gst_rtsp_transport_init (GstRTSPTransport * transport)
   return GST_RTSP_OK;
 }
 
-#ifndef GST_DISABLE_DEPRECATED
+#ifndef GST_REMOVE_DEPRECATED
 /**
  * gst_rtsp_transport_get_mime:
  * @trans: a #GstRTSPTransMode

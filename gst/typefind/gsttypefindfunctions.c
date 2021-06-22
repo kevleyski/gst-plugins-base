@@ -55,7 +55,7 @@ typedef struct
 {
   guint64 offset;
   const guint8 *data;
-  gint size;
+  guint size;
 } DataScanCtx;
 
 static inline void
@@ -72,7 +72,7 @@ data_scan_ctx_advance (GstTypeFind * tf, DataScanCtx * c, guint bytes_to_skip)
 }
 
 static inline gboolean
-data_scan_ctx_ensure_data (GstTypeFind * tf, DataScanCtx * c, gint min_len)
+data_scan_ctx_ensure_data (GstTypeFind * tf, DataScanCtx * c, guint min_len)
 {
   const guint8 *data;
   guint64 len;
@@ -112,6 +112,9 @@ static inline gboolean
 data_scan_ctx_memcmp (GstTypeFind * tf, DataScanCtx * c, guint offset,
     const gchar * data, guint len)
 {
+  if (G_UNLIKELY (offset + len >= G_MAXUINT32))
+    return FALSE;
+
   if (!data_scan_ctx_ensure_data (tf, c, offset + len))
     return FALSE;
 
@@ -279,8 +282,8 @@ static void
 unicode_type_find (GstTypeFind * tf, const GstUnicodeTester * tester,
     guint n_tester, const char *media_type, gboolean require_bom)
 {
-  size_t n;
-  gint len = 4;
+  gsize n;
+  gsize len = 4;
   const guint8 *data = gst_type_find_peek (tf, 0, len);
   int prob = -1;
   const gint max_scan_size = 256 * 1024;
@@ -1096,7 +1099,7 @@ aac_type_find (GstTypeFind * tf, gpointer unused)
   DataScanCtx c = { 0, NULL, 0 };
   GstTypeFindProbability best_probability = GST_TYPE_FIND_NONE;
   GstCaps *best_caps = NULL;
-  guint best_count = 0;
+  gint best_count = 0;
 
   while (c.offset < AAC_AMOUNT) {
     guint snc, len, offset, i;
@@ -2470,7 +2473,7 @@ mpeg_ts_type_find (GstTypeFind * tf, gpointer unused)
 
     /* Have at least MPEGTS_HDR_SIZE bytes at this point */
     if (IS_MPEGTS_HEADER (data)) {
-      gint p;
+      gsize p;
 
       GST_LOG ("possible mpeg-ts sync at offset %" G_GUINT64_FORMAT, skipped);
 
@@ -2923,7 +2926,7 @@ mpeg_video_stream_type_find (GstTypeFind * tf, gpointer unused)
   gboolean seen_seq = FALSE;
   gboolean seen_gop = FALSE;
   guint64 last_pic_offset = 0;
-  guint num_pic_headers = 0;
+  gint num_pic_headers = 0;
   gint found = 0;
 
   while (c.offset < GST_MPEGVID_TYPEFIND_TRY_SYNC) {
@@ -3122,7 +3125,7 @@ q3gp_type_find (GstTypeFind * tf, gpointer unused)
 {
   const gchar *profile;
   guint32 ftyp_size = 0;
-  gint offset = 0;
+  guint32 offset = 0;
   const guint8 *data = NULL;
 
   if ((data = gst_type_find_peek (tf, 0, 12)) == NULL) {
@@ -4384,6 +4387,11 @@ ebml_parse_chunk (GstTypeFind * tf, DataScanCtx * ctx, guint32 chunk_id,
     GST_DEBUG ("%s %08x, size %" G_GUINT64_FORMAT " / %" G_GUINT64_FORMAT,
         SPACES + sizeof (SPACES) - 1 - (2 * depth), id, element_size,
         hdr_len + element_size);
+
+    if (element_size >= G_MAXUINT32) {
+      GST_DEBUG ("Chunk too big for typefinding");
+      return FALSE;
+    }
 
     if (!data_scan_ctx_ensure_data (tf, &c, element_size)) {
       GST_DEBUG ("not enough data");

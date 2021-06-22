@@ -35,6 +35,7 @@ EXTRA_DIST += dbesi0.c
 
 libgstaudio_@GST_API_VERSION@_la_SOURCES = \
 	audio.c \
+	audio-buffer.c \
 	audio-format.c \
 	audio-channels.c \
 	audio-channel-mixer.c \
@@ -66,6 +67,7 @@ libgstaudio_@GST_API_VERSION@include_HEADERS = \
 	audio.h \
 	audio-prelude.h	\
 	audio-format.h \
+	audio-buffer.h \
 	audio-channels.h \
 	audio-channel-mixer.h \
 	audio-converter.h \
@@ -102,7 +104,7 @@ noinst_HEADERS = \
 	audio-resampler-neon.h
 
 libgstaudio_@GST_API_VERSION@_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS) $(GST_CFLAGS) \
-		$(ORC_CFLAGS)
+		$(ORC_CFLAGS) -DBUILDING_GST_AUDIO
 libgstaudio_@GST_API_VERSION@_la_LIBADD = \
   $(top_builddir)/gst-libs/gst/tag/libgsttag-@GST_API_VERSION@.la \
   $(GST_BASE_LIBS) $(GST_LIBS) $(LIBM) $(ORC_LIBS)

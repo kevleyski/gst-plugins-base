@@ -856,8 +856,8 @@ gst_gl_get_affine_transformation_meta_as_ndc (GstVideoAffineTransformationMeta *
     float tmp[16];
 
     /* change of basis multiplications */
-    gst_gl_multiply_matrix4 (to_ndc_matrix, meta->matrix, tmp);
-    gst_gl_multiply_matrix4 (tmp, from_ndc_matrix, matrix);
+    gst_gl_multiply_matrix4 (from_ndc_matrix, meta->matrix, tmp);
+    gst_gl_multiply_matrix4 (tmp, to_ndc_matrix, matrix);
   }
 }
 
@@ -869,6 +869,6 @@ void gst_gl_set_affine_transformation_meta_from_ndc
   g_return_if_fail (meta != NULL);
 
   /* change of basis multiplications */
-  gst_gl_multiply_matrix4 (from_ndc_matrix, matrix, tmp);
-  gst_gl_multiply_matrix4 (tmp, to_ndc_matrix, meta->matrix);
+  gst_gl_multiply_matrix4 (to_ndc_matrix, matrix, tmp);
+  gst_gl_multiply_matrix4 (tmp, from_ndc_matrix, meta->matrix);
 }

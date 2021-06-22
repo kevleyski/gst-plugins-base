@@ -86,7 +86,7 @@
 #define EGL_DMA_BUF_PLANE0_PITCH_EXT 0x3274
 #endif
 
-#ifdef USE_EGL_RPI
+#if !GST_GL_HAVE_EGLUINT64KHR
 typedef khronos_uint64_t EGLuint64KHR;
 #endif
 
@@ -157,7 +157,7 @@ _gst_egl_image_copy (GstMiniObject * obj)
  * @image: the image to wrap
  * @format: the #GstGLFormat
  * @user_data: user data
- * @user_data_destroy: called when @user_data is no longer needed
+ * @user_data_destroy: (destroy user_data): called when @user_data is no longer needed
  *
  * Returns: a new #GstEGLImage wrapping @image
  */
